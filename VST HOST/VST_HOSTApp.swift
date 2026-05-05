@@ -6,12 +6,13 @@
 //
 
 import SwiftUI
+import UIKit
 
 @main
 struct VST_HOSTApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(test: false)
         }
     }
 }

@@ -16,6 +16,7 @@
      @Published var vstsLibraryCharMessage: Data = Data()
      @Published var presetCharMessage: String = ""
      @Published var presetInfoCharMessage: Data = Data()
+     @Published var settingListCharMessage: Data = Data()
      
      private var centralManager: CBCentralManager!
      private var peripheral: CBPeripheral!
@@ -102,6 +103,18 @@
                          peripheral.setNotifyValue(true, for: characteristic)
                      }
                  }
+                 else if characteristic.uuid == BLEServer.RasberrySettingListServiceUUID {
+                     print("RasberrySettingListServiceUUID found")
+                     if characteristic.properties.contains(.notify) {
+                         peripheral.setNotifyValue(true, for: characteristic)
+                     }
+                 }
+                 else if characteristic.uuid == BLEServer.RasberrySettingChangeServiceUUID {
+                     print("RasberrySettingChangeServiceUUID found")
+                     if characteristic.properties.contains(.notify) {
+                         peripheral.setNotifyValue(true, for: characteristic)
+                     }
+                 }
              }
          }
          self.peripheral = peripheral
@@ -121,6 +134,9 @@
          }
          else if characteristic.uuid == BLEServer.RasberryPresetInfoServiceUUID {
              presetInfoCharMessage = data
+         }
+         else if characteristic.uuid == BLEServer.RasberrySettingListServiceUUID {
+             settingListCharMessage = data
          }
      }
 

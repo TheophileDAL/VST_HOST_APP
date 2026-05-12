@@ -132,7 +132,7 @@ struct PresetsView: View {
                 }
             }
         }
-        .id(file_number)
+        .id(file_number+2)
         .onAppear {
             host.state.preset.append(-1)
             scrollAndDeploy(proxy: proxy)
@@ -180,7 +180,7 @@ struct PresetsView: View {
     
     func scrollToTheEnd(proxy: ScrollViewProxy) {
         withAnimation(.easeInOut(duration: 0.5)) {
-            proxy.scrollTo(file_number, anchor: .trailing)
+            proxy.scrollTo(file_number+2, anchor: .trailing)
         }
     }
     
@@ -194,6 +194,102 @@ struct PresetsView: View {
                     visiblePresets[i] = true
                 }
             }
+        }
+    }
+}
+
+struct SettingsView: View {
+    
+    @Binding var setting_list: [Setting]
+    @ObservedObject var host: RaspberryHost
+    let stage: Int
+    
+    var proxy: ScrollViewProxy
+    
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(setting_list.indices, id: \.self) { index in
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(Color.white.opacity(0.85), lineWidth: 2)
+                            )
+                            .frame(width: 130)
+                            .opacity(
+                                (host.state.settings[stage] == index) ? 1 : 0.2
+                            )
+                        
+                        MarqueeText(
+                            text: setting_list[index].name,
+                            font: UIFont(name: "DS-Digital", size: 25) ?? UIFont.systemFont(ofSize: 25),
+                            width: 118
+                        )
+                        .foregroundColor(Color.white.opacity(0.85))
+                        .padding(.vertical, 2)
+                        .frame(width: 118)
+                        .clipped()
+                    }
+                    .onTapGesture {
+                        host.state.settings[stage] = index
+                        if setting_list[index].list == nil {
+                            host.state.name = "change settings"
+                            host.setVST()
+                        }
+                        else if host.state.settings.count < stage + 2 {
+                            host.state.settings.append(-1)
+                        }
+                        else{
+                            host.state.settings[stage+1] = -1
+                        }
+                    }
+                }
+            }
+        }
+        .id(stage + 1)
+        .onChange(of: setting_list){
+            host.state.settings[stage] = -1
+        }
+        .onChange(of: host.state.settings[stage]){
+            scrollToTheEnd(proxy: proxy)
+        }
+        
+        if host.state.settings.indices.contains(stage+1),
+           host.state.settings[stage] != -1,
+           host.state.settings[stage] < setting_list.count,
+           let list = setting_list[host.state.settings[stage]].list,
+           !list.isEmpty {
+            
+            SettingsView(
+                setting_list: Binding(
+                    get: {
+                        if host.state.settings.indices.contains(stage+1),
+                           host.state.settings[stage] != -1,
+                           host.state.settings[stage] < setting_list.count,
+                           let list = setting_list[host.state.settings[stage]].list,
+                           !list.isEmpty {
+                            setting_list[host.state.settings[stage]].list!
+                        }
+                        else{
+                            []
+                        }
+                    },
+                    set: { newValue in
+                        setting_list[host.state.settings[stage]].list = newValue
+                    }
+                ),
+                host: host,
+                stage: stage + 1,
+                proxy: proxy
+            )
+        }
+    }
+    
+    func scrollToTheEnd(proxy: ScrollViewProxy) {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            proxy.scrollTo(stage + 2, anchor: .trailing)
         }
     }
 }
@@ -267,7 +363,7 @@ struct PresetsView: View {
                                                              )
                                                              .frame(width: 130)
                                                              .opacity(host.state.stream == index ? 1 : 0.2)
-                                                         Text(host.VSTList[index].name)
+                                                         Text("\(host.VSTList[index].name) VST")
                                                              .font(.custom("DS-Digital", size: 25))
                                                              .foregroundColor(Color.white.opacity(0.85))
                                                              .padding(.vertical,2)
@@ -288,37 +384,74 @@ struct PresetsView: View {
                                                          host.faderParameters = []
                                                      }
                                                  }
-                                             }
-                                         }.id("vst streams")
-                                         ScrollView {
-                                             VStack(alignment: .leading, spacing: 8) {
-                                                 ForEach(host.VSTList[host.state.stream].list?.indices ?? [].indices, id: \.self) { index in
-                                                     ZStack{
-                                                         RoundedRectangle(cornerRadius: 4)
-                                                             .fill(Color(red: 0.1, green: 0.1, blue: 0.1))
-                                                             .overlay(
-                                                                RoundedRectangle(cornerRadius: 6)
-                                                                    .stroke(Color.white.opacity(0.85), lineWidth: 2)
-                                                             )
-                                                             .frame(width: 130)
-                                                             .opacity(host.state.host == index ? 1 : 0.2)
-                                                         Text(host.VSTList[host.state.stream].list![index].name)
-                                                             .font(.custom("DS-Digital", size: 25))
-                                                             .foregroundColor(Color.white.opacity(0.85))
-                                                             .padding(.vertical,2)
-                                                     }.onTapGesture{
-                                                         host.state.name = "load host"
-                                                         host.state.host = index
-                                                         host.state.preset = Array(
-                                                             repeating: -1,
-                                                             count: host.state.preset.count
+                                                 Spacer()
+                                                 ZStack{
+                                                     RoundedRectangle(cornerRadius: 4)
+                                                         .fill(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                                         .overlay(
+                                                            RoundedRectangle(cornerRadius: 6)
+                                                                .stroke(Color.white.opacity(0.85), lineWidth: 2)
                                                          )
-                                                         host.setVST()
-                                                         //scrollToTheEnd(proxy: proxy)
+                                                         .frame(width: 130)
+                                                         .opacity(host.state.stream == -1 ? 1 : 0.2)
+                                                     Text("Settings")
+                                                         .font(.custom("DS-Digital", size: 25))
+                                                         .foregroundColor(Color.white.opacity(0.85))
+                                                         .padding(.vertical,2)
+                                                 }.onTapGesture{
+                                                     if host.state.settings.count == 0 {
+                                                         host.state.settings.append(-1)
+                                                     }
+                                                     host.state.name = "load settings"
+                                                     host.state.stream = -1
+                                                     host.state.host = -1
+                                                     host.state.preset = Array(
+                                                         repeating: -1,
+                                                         count: host.state.preset.count
+                                                     )
+                                                     host.faderParameters = []
+                                                     scrollToTheEnd(proxy: proxy, index:1)
+                                                 }
+                                                 
+                                             }
+                                         }.id(0)
+                                         if (host.state.stream != -1){
+                                             ScrollView {
+                                                 VStack(alignment: .leading, spacing: 8) {
+                                                     ForEach(host.VSTList[host.state.stream].list?.indices ?? [].indices, id: \.self) { index in
+                                                         ZStack{
+                                                             RoundedRectangle(cornerRadius: 4)
+                                                                 .fill(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                                                 .overlay(
+                                                                    RoundedRectangle(cornerRadius: 6)
+                                                                        .stroke(Color.white.opacity(0.85), lineWidth: 2)
+                                                                 )
+                                                                 .frame(width: 130)
+                                                                 .opacity(host.state.host == index ? 1 : 0.2)
+                                                             Text(host.VSTList[host.state.stream].list![index].name)
+                                                                 .font(.custom("DS-Digital", size: 25))
+                                                                 .foregroundColor(Color.white.opacity(0.85))
+                                                                 .padding(.vertical,2)
+                                                         }.onTapGesture{
+                                                             host.state.name = "load host"
+                                                             host.state.host = index
+                                                             host.state.preset = Array(
+                                                                repeating: -1,
+                                                                count: host.state.preset.count
+                                                             )
+                                                             host.setVST()
+                                                             scrollToTheEnd(proxy: proxy, index:2)
+                                                         }
                                                      }
                                                  }
-                                             }
-                                         }.id("vst hosts")
+                                             }.id(1)
+                                         }
+                                         else{
+                                             SettingsView(setting_list:$host.settings,
+                                                          host: host,
+                                                          stage: 0,
+                                                          proxy: proxy)
+                                         }
                                          Spacer()
                                          if (host.state.stream != -1 && host.state.host != -1){
                                              PresetsView(
@@ -336,7 +469,7 @@ struct PresetsView: View {
                                                 }),
                                                 host: host,
                                                 proxy: proxy,
-                                                file_number: 0
+                                                file_number:0
                                              )
                                          }
                                      }
@@ -437,6 +570,12 @@ struct PresetsView: View {
                  }
              }
              .frame(height: geo.size.height * 0.5)
+         }
+     }
+     
+     func scrollToTheEnd(proxy: ScrollViewProxy, index: Int) {
+         withAnimation(.easeInOut(duration: 0.5)) {
+             proxy.scrollTo(index, anchor: .trailing)
          }
      }
  }
@@ -672,106 +811,106 @@ struct VerticalSlider: View {
     }
 }
 
- struct FadersView: View {
-     
-     @ObservedObject var host: RaspberryHost
-     
-     var body: some View {
-         GeometryReader { geo in
-             HStack{
-                 if host.state.stream == 0 {
-                     ForEach(host.faderParameters, id: \.self) { param in
-                         VStack(alignment: .leading, spacing: 15){
-                             VerticalSlider(host: host, param: param)
-                                 .frame(height: geo.size.height * 0.4)
-                             ZStack {
-                                 RoundedRectangle(cornerRadius: 5)
-                                     .fill(host.param_to_knob.knobId == param.id ? Color(red: 0.3, green: 0.3, blue: 0.3) : Color(red: 0.1, green: 0.1, blue: 0.1))
-                                     .overlay(
-                                         RoundedRectangle(cornerRadius: 5)
-                                             .stroke(Color.black, lineWidth: 5)
-                                     )
-                                     .frame(width: 70, height: 30)
-                                 Text(host.presetActual.plugins[param.pluginId].parameters[param.parameterId].name)
-                                     .font(.custom("DS-Digital", size: 17))
-                                     .foregroundColor(host.param_to_knob.knobId == param.id ? Color(red: 1, green: 0.4, blue: 0.8) : Color.white.opacity(0.85))
-                                     .lineLimit(1)
-                                     .minimumScaleFactor(0.5)
-                                     .frame(width: 65, height: 30)
-                                     .clipped()
-                                     .padding(.horizontal, 2)
-                             }
-                             .onTapGesture {
-                                 host.param_to_knob.knobId = param.id
-                                 host.changeFaderParameters()
-                             }
-                         }
-                     }
-                 } else {
-                     ForEach(
-                         host.faderParameters.enumerated().compactMap { index, param in
-                             index.isMultiple(of: 2) ? param : nil
-                         },
-                         id: \.self
-                     ) { param in
-                         VStack(alignment: .leading, spacing: 15){
-                             // First knob in the pair
-                             RotaryKnob(host: host, param: param)
-                                 .frame(width: 85, height: 85)
-                                 .onTapGesture {
-                                     host.param_to_knob.knobId = param.id
-                                     host.changeFaderParameters()
-                                 }
-                             ZStack(alignment: .top) {
-                                 RoundedRectangle(cornerRadius: 5)
-                                     .fill(host.param_to_knob.knobId == param.id || host.param_to_knob.knobId == param.id+1 ? Color(red: 0.3, green: 0.3, blue: 0.3) : Color(red: 0.1, green: 0.1, blue: 0.1))
-                                     .overlay(
-                                         RoundedRectangle(cornerRadius: 5)
-                                             .stroke(Color.black, lineWidth: 5)
-                                     )
-                                     .frame(width: 70, height: 35)
-                                 
-                                 VStack(spacing: 0) {
-                                     Text(host.presetActual.plugins[param.pluginId].parameters[param.parameterId].name)
-                                         .font(.custom("DS-Digital", size: 15))
-                                         .foregroundColor(host.param_to_knob.knobId == param.id ? Color(red: 1, green: 0.4, blue: 0.8) : Color.white.opacity(0.85))
-                                         .lineLimit(1)
-                                         .minimumScaleFactor(0.5)
-                                     
-                                     if param.id + 1 < host.faderParameters.count {
-                                         RoundedRectangle(cornerRadius: 5)
-                                             .fill(Color.white.opacity(0.8))
-                                             .frame(height: 1)
-                                         Text(host.presetActual.plugins[host.faderParameters[param.id+1].pluginId].parameters[host.faderParameters[param.id+1].parameterId].name)
-                                             .font(.custom("DS-Digital", size: 15))
-                                             .foregroundColor(host.param_to_knob.knobId == param.id+1 ? Color(red: 1, green: 0.4, blue: 0.8) : Color.white.opacity(0.85))
-                                             .lineLimit(1)
-                                             .minimumScaleFactor(0.5)
-                                     }
-                                 }
-                                 .frame(width: 65, height: 35)
-                                 .clipped()
-                                 .padding(.horizontal, 2)
-                             }
-                             // Optional second knob in the pair
-                             if param.id + 1 < host.faderParameters.count {
-                                 RotaryKnob(host: host, param: host.faderParameters[param.id + 1])
-                                     .frame(width: 85, height: 85)
-                                     .onTapGesture {
-                                         host.param_to_knob.knobId = param.id+1
-                                         host.changeFaderParameters()
-                                     }
-                             }
-                         }
-                     }
-                 }
-             }
-         }
-     }
- }
+struct FadersView: View {
+    
+    @ObservedObject var host: RaspberryHost
+    
+    var body: some View {
+        GeometryReader { geo in
+            HStack{
+                if host.state.stream == 0 {
+                    ForEach(host.faderParameters, id: \.self) { param in
+                        VStack(alignment: .leading, spacing: 15){
+                            VerticalSlider(host: host, param: param)
+                                .frame(height: geo.size.height * 0.4)
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(host.param_to_knob.knobId == param.id ? Color(red: 0.3, green: 0.3, blue: 0.3) : Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(Color.black, lineWidth: 5)
+                                    )
+                                    .frame(width: 70, height: 30)
+                                Text(host.presetActual.plugins[param.pluginId].parameters[param.parameterId].name)
+                                    .font(.custom("DS-Digital", size: 17))
+                                    .foregroundColor(host.param_to_knob.knobId == param.id ? Color(red: 1, green: 0.4, blue: 0.8) : Color.white.opacity(0.85))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                    .frame(width: 65, height: 30)
+                                    .clipped()
+                                    .padding(.horizontal, 2)
+                            }
+                            .onTapGesture {
+                                host.param_to_knob.knobId = param.id
+                                host.changeFaderParameters()
+                            }
+                        }
+                    }
+                } else {
+                    ForEach(
+                        host.faderParameters.enumerated().compactMap { index, param in
+                            index.isMultiple(of: 2) ? param : nil
+                        },
+                        id: \.self
+                    ) { param in
+                        VStack(alignment: .leading, spacing: 15){
+                            // First knob in the pair
+                            RotaryKnob(host: host, param: param)
+                                .frame(width: 85, height: 85)
+                                .onTapGesture {
+                                    host.param_to_knob.knobId = param.id
+                                    host.changeFaderParameters()
+                                }
+                            ZStack(alignment: .top) {
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(host.param_to_knob.knobId == param.id || host.param_to_knob.knobId == param.id+1 ? Color(red: 0.3, green: 0.3, blue: 0.3) : Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(Color.black, lineWidth: 5)
+                                    )
+                                    .frame(width: 70, height: 35)
+                                
+                                VStack(spacing: 0) {
+                                    Text(host.presetActual.plugins[param.pluginId].parameters[param.parameterId].name)
+                                        .font(.custom("DS-Digital", size: 15))
+                                        .foregroundColor(host.param_to_knob.knobId == param.id ? Color(red: 1, green: 0.4, blue: 0.8) : Color.white.opacity(0.85))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                    
+                                    if param.id + 1 < host.faderParameters.count {
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .fill(Color.white.opacity(0.8))
+                                            .frame(height: 1)
+                                        Text(host.presetActual.plugins[host.faderParameters[param.id+1].pluginId].parameters[host.faderParameters[param.id+1].parameterId].name)
+                                            .font(.custom("DS-Digital", size: 15))
+                                            .foregroundColor(host.param_to_knob.knobId == param.id+1 ? Color(red: 1, green: 0.4, blue: 0.8) : Color.white.opacity(0.85))
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.5)
+                                    }
+                                }
+                                .frame(width: 65, height: 35)
+                                .clipped()
+                                .padding(.horizontal, 2)
+                            }
+                            // Optional second knob in the pair
+                            if param.id + 1 < host.faderParameters.count {
+                                RotaryKnob(host: host, param: host.faderParameters[param.id + 1])
+                                    .frame(width: 85, height: 85)
+                                    .onTapGesture {
+                                        host.param_to_knob.knobId = param.id+1
+                                        host.changeFaderParameters()
+                                    }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 
- struct ContentView: View {
+struct ContentView: View {
      
      @ObservedObject private var bleManager = BLEManager()
      @ObservedObject var raspberryHost: RaspberryHost

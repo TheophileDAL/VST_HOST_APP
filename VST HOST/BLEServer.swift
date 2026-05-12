@@ -16,5 +16,7 @@ class BLEServer: NSObject {
     public static let RasberryPresetServiceUUID = CBUUID.init(string: "d98c8812-876b-4516-988c-28c7384a33cc")
     public static let RasberryPresetInfoServiceUUID = CBUUID.init(string: "d98c8813-876b-4516-988c-28c7384a33cc")
     public static let RasberryParamChangeServiceUUID = CBUUID.init(string: "d98c8814-876b-4516-988c-28c7384a33cc")
+    public static let RasberrySettingListServiceUUID = CBUUID.init(string: "d98c8815-876b-4516-988c-28c7384a33cc")
+    public static let RasberrySettingChangeServiceUUID = CBUUID.init(string: "d98c8816-876b-4516-988c-28c7384a33cc")
 
 }

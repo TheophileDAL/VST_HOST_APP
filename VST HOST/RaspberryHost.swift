@@ -48,6 +48,7 @@ struct VSTstate: Codable, Hashable{
     var stream: Int
     var host: Int
     var preset: [Int]
+    var settings: [Int]
 }
 
 struct KnobParamPair {
@@ -56,18 +57,27 @@ struct KnobParamPair {
     var knobId: Int?
 }
 
+struct Setting: Codable, Hashable {
+    var name: String
+    var value: Double?
+    var selected: String?
+    var list: [Setting]?
+}
+
 class RaspberryHost: NSObject, ObservableObject {
     @Published var VSTList: [VST] = []
     @Published var presetActual: Preset = Preset(name: "", plugin_count: 0, plugins: [])
-    @Published var state: VSTstate = VSTstate(name: "load setup", stream : 0, host: -1, preset: [])
+    @Published var state: VSTstate = VSTstate(name: "load setup", stream : 0, host: -1, preset: [], settings: [])
     @Published var loading_preset: String = ""
     @Published var faderParameters: [FaderParameter] = []
     @Published var NUM_OF_FADERS: Int = 4
     @Published var param_to_knob = KnobParamPair()
+    @Published var settings: [Setting] = []
 
     var ble_manager: BLEManager
     private var cancellables = Set<AnyCancellable>()
     var jsonData: Data = Data()
+    var jsonData2: Data = Data()
     let test: Bool
     
     init(ble_manager: BLEManager, test : Bool) {
@@ -104,6 +114,13 @@ class RaspberryHost: NSObject, ObservableObject {
                     self?.getPreset()
                 }
                 .store(in: &cancellables)
+            
+            ble_manager.$settingListCharMessage
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    self?.setSettings()
+                }
+                .store(in: &cancellables)
         }
         else {
             setPresets()
@@ -120,7 +137,7 @@ class RaspberryHost: NSObject, ObservableObject {
             VSTList = []
             faderParameters = []
             presetActual = Preset(name: "", plugin_count: 0, plugins: [])
-            state = VSTstate(name: "load setup", stream: 0, host: -1, preset: [])
+            state = VSTstate(name: "load setup", stream: 0, host: -1, preset: [], settings: [])
         }
     }
 
@@ -170,6 +187,33 @@ class RaspberryHost: NSObject, ObservableObject {
         }
     }
     
+    func setSettings() {
+        if (!ble_manager.settingListCharMessage.isEmpty){
+            let data = ble_manager.settingListCharMessage
+            if (!data.isEmpty){
+                let msg = String(data: data, encoding: .utf8)
+                print(msg!)
+                print(jsonData2)
+                if (msg == "end of transmission"){
+                    let decoder = JSONDecoder()
+                    do {
+                        let parsedPreset = try decoder.decode([Setting].self, from: jsonData2)
+                        self.settings = parsedPreset
+                        print(self.settings)
+
+                    } catch {
+                        print("[RaspberryHost Settings] Failed to decode preset JSON: \(error)")
+                    }
+                    jsonData2 = Data()
+                }
+                else{
+                    jsonData2.append(ble_manager.settingListCharMessage)
+                    print(ble_manager.settingListCharMessage)
+                }
+            }
+        }
+    }
+        
     func setFaderParameters(){
         faderParameters = []
         var id : Int = 0
